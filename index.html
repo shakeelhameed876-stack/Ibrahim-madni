@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>SKYLINE TARGET RUN</title>
+<style>
+  *{box-sizing:border-box}
+  html,body{margin:0;height:100%;overflow:hidden;background:#07111b;color:#fff;font-family:Inter,system-ui,-apple-system,Segoe UI,Arial,sans-serif}
+  canvas{display:block}
+  #menu,#pause{position:fixed;inset:0;display:flex;align-items:center;justify-content:center;z-index:20;background:radial-gradient(circle at 50% 45%,rgba(23,55,80,.55),rgba(2,7,12,.97))}
+  #pause{display:none}
+  .panel{width:min(720px,92vw);padding:34px;border:1px solid rgba(255,255,255,.14);border-radius:24px;background:rgba(6,14,22,.82);backdrop-filter:blur(18px);box-shadow:0 28px 90px rgba(0,0,0,.45)}
+  .eyebrow{font-size:11px;letter-spacing:.28em;color:#70e9ff;font-weight:800}
+  h1{font-size:clamp(44px,9vw,88px);line-height:.88;margin:12px 0}
+  p{color:rgba(255,255,255,.72);line-height:1.65}
+  .actions{display:flex;gap:12px;flex-wrap:wrap;margin-top:24px}
+  button{border:1px solid rgba(255,255,255,.18);background:#0c1824;color:white;padding:13px 18px;border-radius:12px;font-weight:800;cursor:pointer}
+  button.primary{background:linear-gradient(100deg,#7ff2ff,#78b8ff);color:#041018;border-color:transparent}
+  .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:20px}
+  .card{padding:13px 15px;border:1px solid rgba(255,255,255,.1);border-radius:13px;background:rgba(255,255,255,.035)}
+  .card b{display:block}.card span{font-size:13px;color:rgba(255,255,255,.66)}
+  #hud{position:fixed;inset:0;pointer-events:none;z-index:10}
+  .glass{background:rgba(7,15,23,.62);border:1px solid rgba(255,255,255,.12);backdrop-filter:blur(10px);border-radius:14px}
+  #top{position:absolute;left:18px;right:18px;top:18px;display:flex;justify-content:space-between;gap:12px}
+  #brand,#stats{padding:10px 13px}
+  #brand strong{letter-spacing:.16em} #brand small{display:block;color:rgba(255,255,255,.6);margin-top:3px}
+  #stats{display:flex;gap:16px}
+  .stat label{display:block;font-size:9px;letter-spacing:.16em;color:rgba(255,255,255,.58)}
+  .stat strong{font-size:18px}
+  #mission{position:absolute;top:86px;left:50%;transform:translateX(-50%);padding:10px 16px;text-align:center;min-width:290px}
+  #mission b{font-size:11px;letter-spacing:.15em}.sub{display:block;color:rgba(255,255,255,.65);font-size:12px;margin-top:4px}
+  #bottom{position:absolute;left:18px;right:18px;bottom:18px;display:flex;justify-content:space-between;align-items:end;gap:12px}
+  #health,#info{padding:12px 14px}
+  #health{width:250px}.meter{height:6px;background:rgba(255,255,255,.1);border-radius:99px;overflow:hidden;margin-top:8px}.meter>div{height:100%;width:100%;background:linear-gradient(90deg,#65f6d2,#7fefff)}
+  #info{font-size:12px;color:rgba(255,255,255,.68);text-align:right}
+  #crosshair{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);width:22px;height:22px}
+  #crosshair:before,#crosshair:after{content:"";position:absolute;background:#fff;box-shadow:0 0 8px rgba(255,255,255,.7)}
+  #crosshair:before{left:0;right:0;height:1px;top:10px}.crosshair{}
+  #crosshair:after{top:0;bottom:0;width:1px;left:10px}
+  #toast{position:absolute;left:50%;bottom:22%;transform:translate(-50%,15px);padding:11px 16px;opacity:0;transition:.22s}
+  #toast.show{opacity:1;transform:translate(-50%,0)}
+  @media(max-width:700px){#info{display:none}.grid{grid-template-columns:1fr}#stats{gap:8px}.stat strong{font-size:14px}}
+</style>
+</head>
+<body>
+<div id="menu">
+  <div class="panel">
+    <div class="eyebrow">FIRST-PERSON / TARGET CHALLENGE</div>
+    <h1>SKYLINE<br>TARGET RUN</h1>
+    <p>Explore a stylized night arena, move through the city, and tag glowing targets by clicking them. Targets move, your combo matters, and each wave becomes faster.</p>
+    <div class="grid">
+      <div class="card"><b>WASD</b><span>Move</span></div>
+      <div class="card"><b>MOUSE</b><span>Look around</span></div>
+      <div class="card"><b>CLICK</b><span>Tag the target under the reticle</span></div>
+      <div class="card"><b>P / ESC</b><span>Pause / release pointer</span></div>
+    </div>
+    <div class="actions">
+      <button id="start" class="primary">START RUN</button>
+    </div>
+  </div>
+</div>
+
+<div id="pause">
+  <div class="panel" style="text-align:center">
+    <div class="eyebrow">RUN PAUSED</div>
+    <h1 style="font-size:54px">SKYLINE</h1>
+    <p style="margin:auto">Press resume to continue the challenge.</p>
+    <div class="actions" style="justify-content:center"><button id="resume" class="primary">RESUME</button></div>
+  </div>
+</div>
+
+<div id="hud">
+  <div id="top">
+    <div id="brand" class="glass"><strong>SKYLINE TARGET RUN</strong><small>SECTOR 07 • NIGHT ARENA</small></div>
+    <div id="stats" class="glass">
+      <div class="stat"><label>SCORE</label><strong id="score">000000</strong></div>
+      <div class="stat"><label>WAVE</label><strong id="wave">1</strong></div>
+      <div class="stat"><label>TIME</label><strong id="time">00:00</strong></div>
+    </div>
+  </div>
+  <div id="mission" class="glass"><b id="missionTitle">TARGET ACQUISITION</b><span id="missionText" class="sub">Tag 10 glowing targets to advance.</span></div>
+  <div id="bottom">
+    <div id="health" class="glass"><div>ENERGY <b id="energyText">100</b>%</div><div class="meter"><div id="energyFill"></div></div></div>
+    <div id="info" class="glass">WASD • MOUSE • CLICK • P / ESC<br>Pointer lock starts when you click.</div>
+  </div>
+  <div id="crosshair"></div>
+  <div id="toast" class="glass"></div>
+</div>
+
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js",
+    "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.180.0/examples/jsm/"
+  }
+}
+</script>
+
+<script type="module">
+import * as THREE from 'three';
+import {EffectComposer} from 'three/addons/postprocessing/EffectComposer.js';
+import {RenderPass} from 'three/addons/postprocessing/RenderPass.js';
+import {UnrealBloomPass} from 'three/addons/postprocessing/UnrealBloomPass.js';
+
+const $=id=>document.getElementById(id);
+let scene,camera,renderer,composer,clock;
+let targets=[], buildings=[], sparks;
+let started=false,paused=false;
+let yaw=0,pitch=0;
+const keys=new Set();
+const raycaster=new THREE.Raycaster();
+const state={score:0,wave:1,hits:0,needed:10,time:0,energy:100,combo:0,lastHit:0};
+
+const player=new THREE.Vector3(0,2.2,25);
+const velocity=new THREE.Vector3();
+const direction=new THREE.Vector3();
+const temp=new THREE.Vector3();
+const targetColor=0x6eeaff;
+
+$('start').onclick=()=>{ $('menu').style.display='none'; init(); startRun(); };
+$('resume').onclick=()=>setPause(false);
+
+addEventListener('keydown',e=>{
+  keys.add(e.key.toLowerCase());
+  if(e.key.toLowerCase()==='p'||e.key==='Escape') {
+    if(started) setPause(!paused);
+  }
+});
+addEventListener('keyup',e=>keys.delete(e.key.toLowerCase()));
+
+document.addEventListener('mousemove',e=>{
+  if(!started||paused||document.pointerLockElement!==document.body)return;
+  yaw -= e.movementX*0.0022;
+  pitch -= e.movementY*0.0018;
+  pitch=THREE.MathUtils.clamp(pitch,-1.2,1.2);
+});
+
+document.addEventListener('click',()=>{
+  if(started&&!paused){
+    if(document.pointerLockElement!==document.body) document.body.requestPointerLock?.();
+    else tagTarget();
+  }
+});
+
+document.addEventListener('pointerlockchange',()=>{
+  if(started && document.pointerLockElement!==document.body && !paused) setPause(true);
+});
+
+function init(){
+  scene=new THREE.Scene();
+  scene.background=new THREE.Color(0x040914);
+  scene.fog=new THREE.FogExp2(0x091521,.008);
+
+  camera=new THREE.PerspectiveCamera(72,innerWidth/innerHeight,.05,1600);
+  camera.position.copy(player);
+
+  renderer=new THREE.WebGLRenderer({antialias:true,powerPreference:'high-performance'});
+  renderer.setSize(innerWidth,innerHeight);
+  renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+  renderer.shadowMap.enabled=true;
+  renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+  renderer.toneMapping=THREE.ACESFilmicToneMapping;
+  renderer.toneMappingExposure=1.12;
+  document.body.appendChild(renderer.domElement);
+
+  composer=new EffectComposer(renderer);
+  composer.addPass(new RenderPass(scene,camera));
+  const bloom=new UnrealBloomPass(new THREE.Vector2(innerWidth,innerHeight),.7,.75,.84);
+  bloom.threshold=.8;bloom.strength=.72;bloom.radius=.7;
+  composer.addPass(bloom);
+
+  const hemi=new THREE.HemisphereLight(0x9dd0ff,0x081117,1.25);
+  scene.add(hemi);
+  const moon=new THREE.DirectionalLight(0x9dc8ff,2.3);
+  moon.position.set(-250,350,180);moon.castShadow=true;moon.shadow.mapSize.set(2048,2048);
+  moon.shadow.camera.left=-500;moon.shadow.camera.right=500;moon.shadow.camera.top=500;moon.shadow.camera.bottom=-500;
+  scene.add(moon);
+
+  buildArena();
+  makeBuildings();
+  makeStreetLights();
+  makeParticles();
+  spawnWave();
+
+  addEventListener('resize',resize);
+  clock=new THREE.Clock();
+}
+
+function material(color,rough=.6,metal=.05,emissive=0,e=0){
+  return new THREE.MeshStandardMaterial({color,roughness:rough,metalness:metal,emissive,emissiveIntensity:e});
+}
+
+function buildArena(){
+  const ground=new THREE.Mesh(new THREE.PlaneGeometry(900,900),material(0x0f171d,.96,0));
+  ground.rotation.x=-Math.PI/2;ground.receiveShadow=true;scene.add(ground);
+
+  const roadMat=material(0x151b21,.92,.08);
+  const lineMat=material(0xaeb7bd,.4,.1);
+  for(let i=-4;i<=4;i++){
+    const z=i*85;
+    const road=new THREE.Mesh(new THREE.BoxGeometry(900,.12,22),roadMat);road.position.set(0,.06,z);road.receiveShadow=true;scene.add(road);
+    const line=new THREE.Mesh(new THREE.BoxGeometry(900,.13,.16),lineMat);line.position.set(0,.13,z);scene.add(line);
+    const road2=new THREE.Mesh(new THREE.BoxGeometry(22,.12,900),roadMat);road2.position.set(z,.06,0);road2.receiveShadow=true;scene.add(road2);
+    const line2=new THREE.Mesh(new THREE.BoxGeometry(.16,.13,900),lineMat);line2.position.set(z,.13,0);scene.add(line2);
+  }
+}
+
+function makeBuildings(){
+  const mats=[0x26323c,0x1d2731,0x303b46,0x222d36].map(c=>material(c,.76,.18));
+  const winm=[0x9fe8ff,0xffd7a3,0x77bfff].map(c=>material(c,.22,.1,c,1.4));
+
+  for(let gx=-4;gx<=4;gx++) for(let gz=-4;gz<=4;gz++){
+    if(Math.abs(gx)<=0 && Math.abs(gz)<=0) continue;
+    const baseX=gx*85+THREE.MathUtils.randFloat(-22,22);
+    const baseZ=gz*85+THREE.MathUtils.randFloat(-22,22);
+    const w=THREE.MathUtils.randFloat(22,38),d=THREE.MathUtils.randFloat(22,38),h=THREE.MathUtils.randFloat(18,70);
+    const g=new THREE.Group();
+    const body=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mats[(gx+gz+20)%mats.length]);body.position.y=h/2;body.castShadow=true;body.receiveShadow=true;g.add(body);
+    const roof=new THREE.Mesh(new THREE.BoxGeometry(w*1.03,.5,d*1.03),material(0x10161b,.65,.45));roof.position.y=h+.25;g.add(roof);
+    const floors=Math.max(2,Math.floor(h/5));
+    const cols=Math.max(2,Math.floor(w/5));
+    for(let f=0;f<floors;f++) for(let c=0;c<cols;c++){
+      if(Math.random()<.18) continue;
+      const win=new THREE.Mesh(new THREE.BoxGeometry(1.9,.78,.05),winm[(f+c)%winm.length]);
+      win.position.set(-w/2+4+c*5,3+f*5,d/2+.05);g.add(win);
+    }
+    g.position.set(baseX,0,baseZ);scene.add(g);buildings.push(g);
+  }
+}
+
+function makeStreetLights(){
+  const pole=material(0x17212a,.55,.65), bulb=material(0xffe4aa,.12,.05,0xffcf7b,4);
+  for(let i=-4;i<=4;i++){
+    for(const s of [-1,1]){
+      const g=new THREE.Group();
+      const p=new THREE.Mesh(new THREE.CylinderGeometry(.15,.2,6,10),pole);p.position.y=3;g.add(p);
+      const b=new THREE.Mesh(new THREE.SphereGeometry(.28,10,10),bulb);b.position.y=6.1;g.add(b);
+      const l=new THREE.PointLight(0xffd49a,10,34,2);l.position.y=6;g.add(l);
+      g.position.set(i*85+s*16,0,14);scene.add(g);
+    }
+  }
+}
+
+function makeParticles(){
+  const n=650,geo=new THREE.BufferGeometry(),pos=new Float32Array(n*3);
+  for(let i=0;i<n;i++){pos[i*3]=THREE.MathUtils.randFloatSpread(700);pos[i*3+1]=THREE.MathUtils.randFloat(2,24);pos[i*3+2]=THREE.MathUtils.randFloatSpread(700)}
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  sparks=new THREE.Points(geo,new THREE.PointsMaterial({color:0x77bfff,size:.16,transparent:true,opacity:.4}));
+  scene.add(sparks);
+}
+
+function targetMaterial(active=true){
+  return material(active?targetColor:0x777f86,.18,.12,active?targetColor:0,active?5:0);
+}
+
+function makeTarget(){
+  const g=new THREE.Group();
+  const orb=new THREE.Mesh(new THREE.SphereGeometry(1.0,24,24),targetMaterial(true));
+  orb.name='target';
+  g.add(orb);
+
+  const ring=new THREE.Mesh(new THREE.TorusGeometry(1.55,.12,12,40),targetMaterial(true));
+  ring.rotation.x=Math.PI/2;g.add(ring);
+
+  const light=new THREE.PointLight(targetColor,12,24,2);g.add(light);
+
+  g.userData={
+    baseY:THREE.MathUtils.randFloat(1.8,7.5),
+    phase:Math.random()*Math.PI*2,
+    speed:THREE.MathUtils.randFloat(.8,1.7),
+    radius:THREE.MathUtils.randFloat(45,150)
+  };
+  const angle=Math.random()*Math.PI*2;
+  const r=g.userData.radius;
+  g.position.set(Math.cos(angle)*r,g.userData.baseY,Math.sin(angle)*r);
+  scene.add(g);targets.push(g);
+}
+
+function spawnWave(){
+  for(const t of targets) scene.remove(t);
+  targets=[];
+  const count=state.wave===1?10:Math.min(18,8+state.wave*2);
+  for(let i=0;i<count;i++)makeTarget();
+  state.hits=0;
+  state.needed=count;
+  $('wave').textContent=state.wave;
+  $('missionText').textContent=`Tag ${count} targets to advance.`;
+}
+
+function tagTarget(){
+  raycaster.setFromCamera(new THREE.Vector2(0,0),camera);
+  const hits=raycaster.intersectObjects(targets,true);
+  if(!hits.length)return;
+  let obj=hits[0].object;
+  while(obj.parent && !targets.includes(obj))obj=obj.parent;
+  if(!targets.includes(obj))return;
+
+  const now=performance.now();
+  const comboGap=now-state.lastHit<1700;
+  state.combo=comboGap?Math.min(12,state.combo+1):1;
+  state.lastHit=now;
+  state.score+=100*state.wave*state.combo;
+  state.hits++;
+  showToast(`TARGET TAGGED  +${100*state.wave*state.combo}`);
+  obj.traverse(x=>{if(x.material)x.material=targetMaterial(false)});
+  setTimeout(()=>scene.remove(obj),130);
+  targets=targets.filter(t=>t!==obj);
+
+  if(state.hits>=state.needed){
+    state.wave++;
+    state.score+=1000;
+    showToast(`WAVE ${state.wave}  +1000`);
+    setTimeout(spawnWave,350);
+  } else {
+    $('missionText').textContent=`${state.hits}/${state.needed} targets tagged.`;
+  }
+}
+
+function move(dt){
+  direction.set(0,0,0);
+  if(keys.has('w'))direction.z-=1;
+  if(keys.has('s'))direction.z+=1;
+  if(keys.has('a'))direction.x-=1;
+  if(keys.has('d'))direction.x+=1;
+  if(direction.lengthSq()>0)direction.normalize();
+
+  const speed=keys.has('shift')?15:9;
+  const forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
+  const right=new THREE.Vector3(Math.cos(yaw),0,-Math.sin(yaw));
+  velocity.set(0,0,0)
+    .addScaledVector(forward,-direction.z*speed)
+    .addScaledVector(right,direction.x*speed);
+
+  player.addScaledVector(velocity,dt);
+  player.x=THREE.MathUtils.clamp(player.x,-380,380);
+  player.z=THREE.MathUtils.clamp(player.z,-380,380);
+  camera.position.copy(player);
+  camera.rotation.order='YXZ';
+  camera.rotation.y=yaw;
+  camera.rotation.x=pitch;
+}
+
+function updateTargets(t){
+  for(const g of targets){
+    g.position.y=g.userData.baseY+Math.sin(t*g.userData.speed+g.userData.phase)*1.2;
+    g.rotation.y=t*g.userData.speed;
+    g.children[1].rotation.z=t*g.userData.speed*1.7;
+  }
+}
+
+function updateHUD(dt){
+  state.time+=dt;
+  $('time').textContent=fmt(state.time);
+  $('score').textContent=String(state.score).padStart(6,'0');
+  state.energy=Math.max(0,100-state.time*.4);
+  $('energyText').textContent=Math.round(state.energy);
+  $('energyFill').style.width=state.energy+'%';
+  if(state.energy<=0){
+    state.energy=100;state.time=0;state.score=Math.max(0,state.score-500);
+    showToast('ENERGY RECHARGED  -500');
+  }
+}
+
+function fmt(s){
+  const m=Math.floor(s/60).toString().padStart(2,'0');
+  const sec=Math.floor(s%60).toString().padStart(2,'0');
+  return m+':'+sec;
+}
+
+let toastTimer;
+function showToast(s){
+  const t=$('toast');t.textContent=s;t.classList.add('show');
+  clearTimeout(toastTimer);toastTimer=setTimeout(()=>t.classList.remove('show'),1200);
+}
+
+function setPause(v){
+  paused=v;
+  $('pause').style.display=v?'flex':'none';
+  if(v) document.exitPointerLock?.();
+  else document.body.requestPointerLock?.();
+  if(clock){if(v)clock.stop();else clock.start();}
+}
+
+function startRun(){
+  started=true;clock.start();document.body.requestPointerLock?.();requestAnimationFrame(loop);
+}
+
+function loop(){
+  requestAnimationFrame(loop);
+  if(paused)return;
+  const dt=Math.min(clock.getDelta(),.035);
+  move(dt);
+  updateTargets(state.time);
+  updateHUD(dt);
+  sparks.rotation.y+=dt*.01;
+  composer.render();
+}
+
+function resize(){
+  camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);composer.setSize(innerWidth,innerHeight);
+}
+</script>
+</body>
+</html>
